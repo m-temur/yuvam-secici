@@ -12,6 +12,7 @@
   button:disabled { opacity: .5; cursor: default; }
   #durum { white-space: pre-wrap; margin-top: 16px; }
   .not { font-size: 13px; color: #5B6460; }
+  #ac { display: none; margin-top: 12px; text-align: center; text-decoration: none; line-height: 52px; height: 52px; border-radius: 14px; background: #1B211F; color: #fff; font-weight: 700; }
 </style>
 <script src="config.js"></script>
 </head>
@@ -21,6 +22,7 @@
   <p>Eşinin seninle paylaştığı <b>Yuvam Veritabanı</b> tablosunu seç. Bunu yalnızca bir kez yapman yeterli.</p>
   <button id="sec" disabled>Tabloyu seç</button>
   <p id="durum"></p>
+  <a id="ac" href="#">Yuvam'ı aç</a>
   <p class="not">Yuvam yalnızca burada seçtiğin dosyaya ve kendi oluşturduğu dosyalara erişebilir. Drive'ındaki diğer dosyaları göremez.</p>
 </main>
 <script>
@@ -28,6 +30,7 @@
   // Google seçicisinde seçtiğinde açar. setAppId izni Yuvam'ın Google Cloud
   // projesine bağlar; böylece mobil uygulama da dosyaya erişebilir.
   // Adres parametreleri (isteğe bağlı): ?klasor=<paylaşılan klasör kimliği>&eposta=<hesap>
+  // Seçimden sonra "Yuvam'ı aç" bağlantısı yuvam://yuvam/katil?tablo=…&klasor=… olur.
   const CLIENT_ID = '185237744296-9ar8oestu58gqkvhina7kadfajkf25cs.apps.googleusercontent.com';
   const APP_ID = '185237744296';
   const SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -79,7 +82,13 @@
         if (veri.action !== google.picker.Action.PICKED) return;
         const d = veri.docs[0];
         if (d.mimeType !== TABLO) { durum('Lütfen Yuvam Veritabanı tablosunu seç.'); return; }
-        durum('Tamam: "' + d.name + '" seçildi.\n\nŞimdi Yuvam uygulamasına dönebilirsin.');
+        durum('Tamam: "' + d.name + '" seçildi. Şimdi Yuvam\'ı açıp Eve katılabilirsin.');
+        const donus = new URL('yuvam://yuvam/katil');
+        donus.searchParams.set('tablo', d.id);
+        if (klasorId) donus.searchParams.set('klasor', klasorId);
+        const ac = document.getElementById('ac');
+        ac.href = donus.toString();
+        ac.style.display = 'block';
       })
       .build()
       .setVisible(true);
