@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yuvam · Eve katıl</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #F4F5F1; color: #1B211F; }
+  main { max-width: 480px; margin: 0 auto; padding: 32px 16px; }
+  h1 { font-size: 26px; }
+  button { font: inherit; font-weight: 700; width: 100%; height: 52px; border: 0; border-radius: 14px; background: #2E6A4F; color: #fff; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  #durum { white-space: pre-wrap; margin-top: 16px; }
+  .not { font-size: 13px; color: #5B6460; }
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Yuvam'a katıl</h1>
+  <p>Eşinin seninle paylaştığı <b>Yuvam Veritabanı</b> tablosunu seç. Bunu yalnızca bir kez yapman yeterli.</p>
+  <button id="sec" disabled>Tabloyu seç</button>
+  <p id="durum"></p>
+  <p class="not">Yuvam yalnızca burada seçtiğin dosyaya ve kendi oluşturduğu dosyalara erişebilir. Drive'ındaki diğer dosyaları göremez.</p>
+</main>
+<script>
+  // drive.file izni, başkasının oluşturduğu bir dosyayı ancak kullanıcı onu
+  // Google seçicisinde seçtiğinde açar. setAppId izni Yuvam'ın Google Cloud
+  // projesine bağlar; böylece mobil uygulama da dosyaya erişebilir.
+  // Adres parametreleri (isteğe bağlı): ?klasor=<paylaşılan klasör kimliği>&eposta=<hesap>
+  const CLIENT_ID = '185237744296-9ar8oestu58gqkvhina7kadfajkf25cs.apps.googleusercontent.com';
+  const APP_ID = '185237744296';
+  const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  const TABLO = 'application/vnd.google-apps.spreadsheet';
+
+  const parametre = new URLSearchParams(location.search);
+  const klasorId = parametre.get('klasor');
+  const eposta = parametre.get('eposta') || '';
+
+  const durum = (metin) => { document.getElementById('durum').textContent = metin; };
+  let pickerHazir = false;
+  let tokenIstemcisi = null;
+
+  function hazirsaAc() {
+    document.getElementById('sec').disabled = !(pickerHazir && tokenIstemcisi);
+  }
+
+  function gapiYuklendi() {
+    gapi.load('picker', () => { pickerHazir = true; hazirsaAc(); });
+  }
+
+  function gisYuklendi() {
+    tokenIstemcisi = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPE,
+      hint: eposta,
+      callback: (yanit) => {
+        if (yanit.error) { durum('Giriş hatası: ' + yanit.error); return; }
+        seciciyiAc(yanit.access_token);
+      },
+    });
+    hazirsaAc();
+  }
+
+  function seciciyiAc(token) {
+    const gorunum = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS);
+    if (klasorId) {
+      gorunum.setParent(klasorId);
+    } else {
+      gorunum.setOwnedByMe(false);
+    }
+    new google.picker.PickerBuilder()
+      .setAppId(APP_ID)
+      .setOAuthToken(token)
+      .setDeveloperKey(window.YUVAM_API_KEY)
+      .setLocale('tr')
+      .addView(gorunum)
+      .setCallback((veri) => {
+        if (veri.action !== google.picker.Action.PICKED) return;
+        const d = veri.docs[0];
+        if (d.mimeType !== TABLO) { durum('Lütfen Yuvam Veritabanı tablosunu seç.'); return; }
+        durum('Tamam: "' + d.name + '" seçildi.\n\nŞimdi Yuvam uygulamasına dönebilirsin.');
+      })
+      .build()
+      .setVisible(true);
+  }
+
+  document.getElementById('sec').addEventListener('click', () => {
+    tokenIstemcisi.requestAccessToken();
+  });
+</script>
+<script async defer src="https://apis.google.com/js/api.js" onload="gapiYuklendi()"></script>
+<script async defer src="https://accounts.google.com/gsi/client" onload="gisYuklendi()"></script>
+</body>
+</html>
